@@ -1,0 +1,162 @@
+Timer unit: 1e-06 s
+
+Total time: 133.286 s
+File: post-sim-recycling.py
+Function: main at line 12
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    12                                           @profile
+    13                                           def main():
+    14         1        514.0    514.0      0.0      with h5py.File(h5file, "r+") as f:
+    15        16        580.0     36.2      0.0          for i in range(150,165):
+    16        15        328.0     21.9      0.0              print("iteration", i)
+    17        15         24.0      1.6      0.0              if transactions:
+    18        14    1637789.0 116984.9      1.2                  arr_t = numpy.array((transactions), dtype=int)
+    19        14    1482310.0 105879.3      1.1                  arr_i = numpy.array((transactions), dtype=int)[:,0]
+    20        14         34.0      2.4      0.0                  to_delete = i-2
+    21        14       8048.0    574.9      0.0                  if to_delete in arr_i:
+    22        12       6776.0    564.7      0.0                      to_delete_index = arr_i == to_delete
+    23        12       4955.0    412.9      0.0                      limit = numpy.where(to_delete_index == True)[0][-1]
+    24        12      20882.0   1740.2      0.0                      del transactions[0:limit+1]
+    25                                               
+    26        15         92.0      6.1      0.0              path = "iterations/iter_" + str(i).zfill(8)
+    27        15         28.0      1.9      0.0              nextpath = "iterations/iter_" + str(i+1).zfill(8)
+    28        15      11110.0    740.7      0.0              pcoords = f[path]['pcoord'][:,-1] 
+    29        15       9351.0    623.4      0.0              parents = f[path]['seg_index']['parent_id']
+    30        15       9458.0    630.5      0.0              nextparents = f[nextpath]['seg_index']['parent_id']
+    31        15       2350.0    156.7      0.0              wtgraph = f[path]['wtgraph']
+    32        15       2333.0    155.5      0.0              nextwtgraph = f[nextpath]['wtgraph']
+    33        15       9037.0    602.5      0.0              wtg_np = f[path]['seg_index']['wtg_n_parents']
+    34        15       8847.0    589.8      0.0              wtg_off = f[path]['seg_index']['wtg_offset']
+    35        15       8745.0    583.0      0.0              nextwtg_np = f[nextpath]['seg_index']['wtg_n_parents']
+    36        15       8635.0    575.7      0.0              nextwtg_off = f[nextpath]['seg_index']['wtg_offset']
+    37        15       8604.0    573.6      0.0              weights = f[path]['seg_index']['weight']
+    38        15       8549.0    569.9      0.0              nextweights = f[nextpath]['seg_index']['weight']
+    39        15       7491.0    499.4      0.0              auxcoords = f[path]['auxdata/c14n34'][:,-1]
+    40        15        265.0     17.7      0.0              max_weight = weights.max()
+    41        15        260.0     17.3      0.0              w = numpy.where(weights == max_weight)[0][0]
+    42        15        126.0      8.4      0.0              next_parent_add = numpy.where(nextparents == w)[0][0]
+    43                                                       
+    44                                                       # Find the walkers that entered the alternate product state.        
+    45        15        103.0      6.9      0.0              aux_mask = numpy.where(auxcoords < 1.7)
+    46        15       5970.0    398.0      0.0              diff = numpy.setdiff1d(nextwtgraph, nextparents)
+    47        15        473.0     31.5      0.0              merged = []
+    48                                                       
+    49      3170       6695.0      2.1      0.0              for k in numpy.arange(0,nextweights.shape[0]):
+    50      3155       5159.0      1.6      0.0                  off = nextwtg_off[k]
+    51      3155       4780.0      1.5      0.0                  np = off + nextwtg_np[k]
+    52      3155     528328.0    167.5      0.4                  merged.append(nextwtgraph[off:np])
+    53                                                       
+    54        15      96275.0   6418.3      0.1              merge_ids = []
+    55        15       4440.0    296.0      0.0              transaction_weights = []
+    56        15         22.0      1.5      0.0              diff_where = []
+    57                                               
+    58        20         87.0      4.3      0.0              for l in aux_mask[0]:
+    59         5         34.0      6.8      0.0                  if l in nextparents:
+    60                                                               next_seg = numpy.where(nextparents==l)[0]
+    61                                                               merge_ids.append(next_seg)
+    62                                                               transaction_weights.append(weights[l])
+    63                                                           else:
+    64      1080       1084.0      1.0      0.0                      for num, m in enumerate(merged):
+    65      1075       4625.0      4.3      0.0                          if l in m:
+    66         5        417.0     83.4      0.0                              ndiff = numpy.setdiff1d(m,diff)
+    67         5          7.0      1.4      0.0                              if ndiff.shape[0] > 1: 
+    68                                                                           if ndiff[0] in nextparents:
+    69                                                                               ndiff = ndiff[0]
+    70                                                                               continue
+    71                                                                           else:
+    72                                                                               ndiff = ndiff[1]
+    73         5         38.0      7.6      0.0                              next_seg = numpy.where(nextparents==ndiff)[0]
+    74         5          9.0      1.8      0.0                              merge_ids.append(next_seg)
+    75         5          9.0      1.8      0.0                              transaction_weights.append(weights[l])
+    76                                                                   else:
+    77                                                                       continue
+    78                                               
+    79        15         16.0      1.1      0.0              iteration = i
+    80        15         16.0      1.1      0.0              iteration_plus_one = i+1
+    81        20         51.0      2.5      0.0              for num, p in enumerate(merge_ids):
+    82         5          5.0      1.0      0.0                  next_parent_subtract = p
+    83         5          5.0      1.0      0.0                  if len(next_parent_subtract) > 1:
+    84                                                               num_split = len(next_parent_subtract)
+    85                                                               split_weight = transaction_weights[num]/num_split
+    86                                                               for q in next_parent_subtract:
+    87                                                                   #print(iteration, p, "xxx", "[", q, "]")
+    88                                                                   transactions.append([iteration_plus_one, q, -1, split_weight])
+    89                                                                   transactions.append([iteration_plus_one, next_parent_add, 1, split_weight])
+    90                                                           else:
+    91                                                               #print(iteration, p, "-->", "[", next_parent_subtract[0], "]")
+    92         5          8.0      1.6      0.0                      transactions.append([iteration_plus_one, next_parent_subtract[0], -1, transaction_weights[num]])
+    93         5          5.0      1.0      0.0                      transactions.append([iteration_plus_one, next_parent_add, 1, transaction_weights[num]])
+    94                                                             
+    95                                                       # Now to reset and do forward propagation. This must be done on-the-fly.   
+    96                                               
+    97        15         17.0      1.1      0.0              merge_ids = []
+    98        15         13.0      0.9      0.0              transaction_weights = []
+    99                                                           
+   100        15         20.0      1.3      0.0              if not transactions:
+   101                                                           continue
+   102        15    1217942.0  81196.1      0.9              arr_t = numpy.array((transactions), dtype=int)
+   103        15    1137223.0  75814.9      0.9              arr_i = numpy.array((transactions), dtype=int)[:,0]
+   104        15       7068.0    471.2      0.0              if i not in arr_i:
+   105         1          1.0      1.0      0.0                  continue
+   106                                               
+   107   1775346    1956764.0      1.1      1.5              for j in arr_t[arr_i == i]:
+   108                                               
+   109   1775332    8069058.0      4.5      6.1                  if j[1] in nextparents:
+   110   1710417    8139865.0      4.8      6.1                      next_seg = numpy.where(nextparents==j[1])[0]
+   111   1710417    1780169.0      1.0      1.3                      merge_ids.append(next_seg)
+   112   1710417    2149512.0      1.3      1.6                      transaction_weights.append(j[3])
+   113                                                           else:
+   114  13801205   13911887.0      1.0     10.4                      for num, m in enumerate(merged):
+   115  13736290   59905431.0      4.4     44.9                          if j[1] in m:
+   116     64915    4214030.0     64.9      3.2                              ndiff = numpy.setdiff1d(m,diff)
+   117     64915      96059.0      1.5      0.1                              if ndiff.shape[0] > 1: 
+   118        32        247.0      7.7      0.0                                  if ndiff[0] in nextparents:
+   119        32         35.0      1.1      0.0                                      ndiff = ndiff[0]
+   120        32         32.0      1.0      0.0                                      continue
+   121                                                                           else:
+   122                                                                               ndiff = ndiff[1]
+   123     64883     407341.0      6.3      0.3                              next_seg = numpy.where(nextparents==ndiff)[0]
+   124     64883      77859.0      1.2      0.1                              merge_ids.append(next_seg)
+   125     64883      94586.0      1.5      0.1                              transaction_weights.append(j[3])
+   126                                                                   else:
+   127                                                                       continue
+   128                                                                           
+   129        14         13.0      0.9      0.0              iteration = i
+   130        14         21.0      1.5      0.0              iteration_plus_one = i+1
+   131   1775314    1743247.0      1.0      1.3              for num, p in enumerate(merge_ids):
+   132   1775300    1582140.0      0.9      1.2                  next_parent_subtract = p
+   133   1775300    1796301.0      1.0      1.3                  if len(next_parent_subtract) > 1:
+   134     18293      18533.0      1.0      0.0                      num_split = len(next_parent_subtract)
+   135     18293      22502.0      1.2      0.0                      split_weight = transaction_weights[num]/num_split
+   136     65084      82630.0      1.3      0.1                      for q in next_parent_subtract:
+   137                                                                   #print(iteration, "FP", p, "xxx", "[", q, "]")
+   138     46791      54287.0      1.2      0.0                          transactions.append([iteration_plus_one, q, -1, split_weight])
+   139     46791      82030.0      1.8      0.1                          transactions.append([iteration_plus_one, next_parent_add, 1, split_weight])
+   140                                                           else:
+   141                                                               #print(iteration, "FP", p, "-->", "[", next_parent_subtract[0], "]")
+   142   1757007    2721841.0      1.5      2.0                      transactions.append([iteration_plus_one, next_parent_subtract[0], -1, transaction_weights[num]])
+   143   1757007    3114553.0      1.8      2.3                      transactions.append([iteration_plus_one, next_parent_add, 1, transaction_weights[num]])   
+   144                                               
+   145        14         14.0      1.0      0.0              b = 0      
+   146        14         15.0      1.1      0.0              if not transactions:
+   147                                                           continue
+   148        14    2695474.0 192533.9      2.0              arr_t = numpy.array((transactions), dtype=int)
+   149        14    2719182.0 194227.3      2.0              arr_i = numpy.array((transactions), dtype=int)[:,0]
+   150                                               
+   151        14      15647.0   1117.6      0.0              if i not in arr_i:
+   152                                                           continue
+   153                                               ##############################           
+   154   1775346    1832931.0      1.0      1.4              for r in arr_t[arr_i == i]:
+   155   1775332    1841730.0      1.0      1.4                  segment = r[1]
+   156   1775332    2447857.0      1.4      1.8                  new_weight = weights[segment] + r[2]*r[3]
+   157   1775332    1784316.0      1.0      1.3                  weights[segment] = new_weight
+   158   1775332    1636495.0      0.9      1.2                  b = 1
+   159                                               ##############################
+   160        14         18.0      1.3      0.0              if b == 1:
+   161        14        555.0     39.6      0.0                  weights /= (weights.sum())
+   162        14      12099.0    864.2      0.0                  f[path]['seg_index']['weight',:] = weights
+   163                                                       else:
+   164                                                           continue
+
