@@ -4,25 +4,35 @@ import h5py
 import pandas as pd
 import numpy
 import time
+import os
+import sys
+from tqdm import tqdm
 
+os.system("cp west_bak.h5 west.h5")
 h5file = 'west.h5'
-
+fi = 1
+li = 1500
 transactions = []
+print_switch = False
 
 #@profile
 def main():
     with h5py.File(h5file, "r+") as f:
-        for i in range(150,165):
+        for i in range(fi,li):
             print("iteration", i)
+            time1 = time.time()
+
+            # Delete transaction information from iteration x-2
             if transactions:
-                arr_t = numpy.array((transactions), dtype=int)
-                arr_i = numpy.array((transactions), dtype=int)[:,0]
+                arr_t = numpy.array(transactions)
+                arr_i = arr_t[:,0]
                 to_delete = i-2
                 if to_delete in arr_i:
                     to_delete_index = arr_i == to_delete
                     limit = numpy.where(to_delete_index == True)[0][-1]
                     del transactions[0:limit+1]
     
+            # Set some necessary variables with hdf5 file data
             path = "iterations/iter_" + str(i).zfill(8)
             nextpath = "iterations/iter_" + str(i+1).zfill(8)
             pcoords = f[path]['pcoord'][:,-1] 
@@ -46,20 +56,30 @@ def main():
             diff = numpy.setdiff1d(nextwtgraph, nextparents)
             merged = []
             
+            # Build a list of all walkers that were involved in merge events
             for k in numpy.arange(0,nextweights.shape[0]):
                 off = nextwtg_off[k]
                 np = off + nextwtg_np[k]
-                merged.append(nextwtgraph[off:np])
+                gotmerged = nextwtgraph[off:np]
+                if gotmerged.shape[0] > 1:
+                    merged.append(gotmerged)
+            #print(merged)
             
+
             merge_ids = []
             transaction_weights = []
             diff_where = []
     
+            # Figure out which child resulted from the segment
             for l in aux_mask[0]:
+                # The easiest case with no merging
                 if l in nextparents:
                     next_seg = numpy.where(nextparents==l)[0]
                     merge_ids.append(next_seg)
                     transaction_weights.append(weights[l])
+                    if print_switch:
+                        print(i, l, "---", next_seg)
+                # The not so easy case where merging occurred
                 else:
                     for num, m in enumerate(merged):
                         if l in m:
@@ -70,46 +90,70 @@ def main():
                                     continue
                                 else:
                                     ndiff = ndiff[1]
-                            next_seg = numpy.where(nextparents==ndiff)[0]
+                            if ndiff.size == 0:
+                                next_seg = numpy.where(nextparents<0)[0]
+                            else:
+                                next_seg = numpy.where(nextparents==ndiff)[0]
                             merge_ids.append(next_seg)
                             transaction_weights.append(weights[l])
+                            if print_switch:
+                                print(i, l, ndiff, "-->", next_seg)
                         else:
                             continue
     
+            # The following adds the transaction to a list that affects the x+1 iteration
             iteration = i
             iteration_plus_one = i+1
             for num, p in enumerate(merge_ids):
                 next_parent_subtract = p
+                # This is to account for splitting
                 if len(next_parent_subtract) > 1:
                     num_split = len(next_parent_subtract)
                     split_weight = transaction_weights[num]/num_split
                     for q in next_parent_subtract:
-                        #print(iteration, p, "xxx", "[", q, "]")
-                        transactions.append([iteration_plus_one, q, -1, split_weight])
-                        transactions.append([iteration_plus_one, next_parent_add, 1, split_weight])
+                        transaction_array1 = numpy.array([iteration_plus_one, q, -1, split_weight])
+                        transaction_array2 = numpy.array([iteration_plus_one, next_parent_add, 1, split_weight])
+                        transactions.append(transaction_array1)
+                        transactions.append(transaction_array2)
+
+                # Or if no splitting occurred
                 else:
-                    #print(iteration, p, "-->", "[", next_parent_subtract[0], "]")
-                    transactions.append([iteration_plus_one, next_parent_subtract[0], -1, transaction_weights[num]])
-                    transactions.append([iteration_plus_one, next_parent_add, 1, transaction_weights[num]])
+                    transaction_array1 = numpy.array([iteration_plus_one, next_parent_subtract[0], -1, transaction_weights[num]])
+                    transaction_array2 = numpy.array([iteration_plus_one, next_parent_add, 1, transaction_weights[num]])
+                    transactions.append(transaction_array1)
+                    transactions.append(transaction_array2)
                   
-            # Now to reset and do forward propagation. This must be done on-the-fly.   
+            # Now to do forward propagation.   
     
             merge_ids = []
             transaction_weights = []
-                
+            unique_transactions = []
+
             if not transactions:
                 continue
-            arr_t = numpy.array((transactions), dtype=int)
-            arr_i = numpy.array((transactions), dtype=int)[:,0]
+            
+            arr_t = numpy.array(transactions)
+            arr_i = arr_t[:,0]
             if i not in arr_i:
                 continue
-    
-            for j in arr_t[arr_i == i]:
-    
+
+            # This condenses the transaction list which makes the following much faster
+            this_iter = arr_t[arr_i == i]
+            arr_s = this_iter[:,1] 
+            for u in numpy.unique(arr_s):
+                unique_positions = this_iter[arr_s == u]
+                total_weight = (unique_positions[:,2]*unique_positions[:,3]).sum()
+                unique_array = numpy.array([int(i), int(u), int(1), total_weight])
+                unique_transactions.append(unique_array)
+
+            # Loop through the condensed list and propagate, similar to the merge block above
+            for j in unique_transactions:
                 if j[1] in nextparents:
                     next_seg = numpy.where(nextparents==j[1])[0]
                     merge_ids.append(next_seg)
-                    transaction_weights.append(j[3])
+                    transaction_weights.append(j[2]*j[3])
+                    if print_switch:
+                        print("FP", i, int(j[1]), "---", next_seg)
                 else:
                     for num, m in enumerate(merged):
                         if j[1] in m:
@@ -120,12 +164,18 @@ def main():
                                     continue
                                 else:
                                     ndiff = ndiff[1]
-                            next_seg = numpy.where(nextparents==ndiff)[0]
+                            if ndiff.size == 0:
+                                next_seg = numpy.where(nextparents<0)[0]
+                            else:
+                                next_seg = numpy.where(nextparents==ndiff)[0]
                             merge_ids.append(next_seg)
-                            transaction_weights.append(j[3])
+                            transaction_weights.append(j[2]*j[3])
+                            if print_switch:
+                                print("FP", i, int(j[1]), ndiff, "-->", next_seg)
                         else:
                             continue
                                 
+            # Add to transaction list
             iteration = i
             iteration_plus_one = i+1
             for num, p in enumerate(merge_ids):
@@ -134,32 +184,39 @@ def main():
                     num_split = len(next_parent_subtract)
                     split_weight = transaction_weights[num]/num_split
                     for q in next_parent_subtract:
-                        #print(iteration, "FP", p, "xxx", "[", q, "]")
-                        transactions.append([iteration_plus_one, q, -1, split_weight])
-                        transactions.append([iteration_plus_one, next_parent_add, 1, split_weight])
+                        transaction_array1 = numpy.array([iteration_plus_one, q, -1, split_weight])
+                        transaction_array2 = numpy.array([iteration_plus_one, next_parent_add, 1, split_weight])
+                        transactions.append(transaction_array1)
+                        transactions.append(transaction_array2)
+
                 else:
-                    #print(iteration, "FP", p, "-->", "[", next_parent_subtract[0], "]")
-                    transactions.append([iteration_plus_one, next_parent_subtract[0], -1, transaction_weights[num]])
-                    transactions.append([iteration_plus_one, next_parent_add, 1, transaction_weights[num]])   
-    
+                    transaction_array1 = numpy.array([iteration_plus_one, next_parent_subtract[0], -1, transaction_weights[num]])
+                    transaction_array2 = numpy.array([iteration_plus_one, next_parent_add, 1, transaction_weights[num]])
+                    transactions.append(transaction_array1)
+                    transactions.append(transaction_array2)
+ 
             b = 0      
             if not transactions:
                 continue
-            arr_t = numpy.array((transactions), dtype=int)
-            arr_i = numpy.array((transactions), dtype=int)[:,0]
-    
+
+            arr_t = numpy.array(transactions)
+            arr_i = arr_t[:,0]
+ 
             if i not in arr_i:
                 continue
-    ##############################           
+         
+            # Modify the hdf5 file weights
             for r in arr_t[arr_i == i]:
-                segment = r[1]
+                segment = int(r[1])
                 new_weight = weights[segment] + r[2]*r[3]
                 weights[segment] = new_weight
                 b = 1
-    ##############################
+            
             if b == 1:
                 weights /= (weights.sum())
                 f[path]['seg_index']['weight',:] = weights
             else:
                 continue
+            time2 = time.time()
+            #print(time2-time1)
 main()
