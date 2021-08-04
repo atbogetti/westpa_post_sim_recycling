@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 os.system("cp west_bak.h5 west.h5")
 h5file = 'west.h5'
-fi = 1
+fi = 2
 li = 1500
 transactions = []
 print_switch = False
@@ -34,7 +34,13 @@ def main():
     
             # Set some necessary variables with hdf5 file data
             path = "iterations/iter_" + str(i).zfill(8)
+            seg_index_path = "iterations/iter_" + str(i).zfill(8) + "/seg_index"
+            if i == 1:
+                prevpath == path
+            else:
+                prevpath = "iterations/iter_" + str(i-1).zfill(8)
             nextpath = "iterations/iter_" + str(i+1).zfill(8)
+            prev_pcoords = f[prevpath]['pcoord'][:,-1] 
             pcoords = f[path]['pcoord'][:,-1] 
             parents = f[path]['seg_index']['parent_id']
             nextparents = f[nextpath]['seg_index']['parent_id']
@@ -46,13 +52,93 @@ def main():
             nextwtg_off = f[nextpath]['seg_index']['wtg_offset']
             weights = f[path]['seg_index']['weight']
             nextweights = f[nextpath]['seg_index']['weight']
-            auxcoords = f[path]['auxdata/c14n34'][:,-1]
+            auxcoords1 = f[path]['auxdata/c5n34'][:,-1]
+            pauxcoords1 = f[prevpath]['auxdata/c5n34'][:,-1]
+            auxcoords2 = f[path]['auxdata/c7n34'][:,-1]
+            pauxcoords2 = f[prevpath]['auxdata/c7n34'][:,-1]
+            auxcoords3 = f[path]['auxdata/c9n34'][:,-1]
+            pauxcoords3 = f[prevpath]['auxdata/c9n34'][:,-1]
+            auxcoords4 = f[path]['auxdata/c12n34'][:,-1]
+            pauxcoords4 = f[prevpath]['auxdata/c12n34'][:,-1]
+            auxcoords5 = f[path]['auxdata/c14n34'][:,-1]
+            pauxcoords5 = f[prevpath]['auxdata/c14n34'][:,-1]
+            auxcoords6 = f[path]['auxdata/c16n34'][:,-1]
+            pauxcoords6 = f[prevpath]['auxdata/c16n34'][:,-1]
+            auxcoords7 = f[path]['auxdata/c21n34'][:,-1]
+            pauxcoords7 = f[prevpath]['auxdata/c21n34'][:,-1]
+            auxcoords8 = f[path]['auxdata/c23n34'][:,-1]
+            pauxcoords8 = f[prevpath]['auxdata/c23n34'][:,-1]
+            auxcoords9 = f[path]['auxdata/c25n34'][:,-1]
+            pauxcoords9 = f[prevpath]['auxdata/c25n34'][:,-1]
             max_weight = weights.max()
             w = numpy.where(weights == max_weight)[0][0]
             next_parent_add = numpy.where(nextparents == w)[0][0]
             
             # Find the walkers that entered the alternate product state.        
-            aux_mask = numpy.where(auxcoords < 1.7)
+            aux_mask1 = numpy.where(auxcoords1 < 1.7)[0]
+            if aux_mask1.size > 0:
+                for y, idx in enumerate(aux_mask1):
+                    parent = parents[y]
+                    if pauxcoords1[parent] < 1.7:
+                        aux_mask1 = numpy.delete(aux_mask1, numpy.where(aux_mask1 == idx)[0])
+            aux_mask2 = numpy.where(auxcoords2 < 1.7)[0]
+            if aux_mask2.size > 0:
+                for y, idx in enumerate(aux_mask2):
+                    parent = parents[y]
+                    if pauxcoords2[parent] < 1.7:
+                        aux_mask2 = numpy.delete(aux_mask2, numpy.where(aux_mask2 == idx)[0])
+            aux_mask3 = numpy.where(auxcoords3 < 1.7)[0]
+            if aux_mask3.size > 0:
+                for y, idx in enumerate(aux_mask3):
+                    parent = parents[y]
+                    if pauxcoords3[parent] < 1.7:
+                        aux_mask3 = numpy.delete(aux_mask3, numpy.where(aux_mask3 == idx)[0])
+            aux_mask4 = numpy.where(auxcoords4 < 1.7)[0]
+            if aux_mask4.size > 0:
+                for y, idx in enumerate(aux_mask4):
+                    parent = parents[y]
+                    if pauxcoords4[parent] < 1.7:
+                        aux_mask4 = numpy.delete(aux_mask4, numpy.where(aux_mask4 == idx)[0])
+            aux_mask5 = numpy.where(auxcoords5 < 1.7)[0]
+            if aux_mask5.size > 0:
+                for y, idx in enumerate(aux_mask5):
+                    parent = parents[y]
+                    if pauxcoords5[parent] < 1.7:
+                        aux_mask5 = numpy.delete(aux_mask5, numpy.where(aux_mask5 == idx)[0])
+            aux_mask6 = numpy.where(auxcoords6 < 1.7)[0]
+            if aux_mask6.size > 0:
+                for y, idx in enumerate(aux_mask6):
+                    parent = parents[y]
+                    if pauxcoords6[parent] < 1.7:
+                        aux_mask6 = numpy.delete(aux_mask6, numpy.where(aux_mask6 == idx)[0])
+            aux_mask7 = numpy.where(auxcoords7 < 1.7)[0]
+            if aux_mask7.size > 0:
+                for y, idx in enumerate(aux_mask7):
+                    parent = parents[y]
+                    if pauxcoords7[parent] < 1.7:
+                        aux_mask7 = numpy.delete(aux_mask7, numpy.where(aux_mask7 == idx)[0])
+            aux_mask8 = numpy.where(auxcoords8 < 1.7)[0]
+            if aux_mask8.size > 0:
+                for y, idx in enumerate(aux_mask8):
+                    parent = parents[y]
+                    if pauxcoords8[parent] < 1.7:
+                        aux_mask8 = numpy.delete(aux_mask8, numpy.where(aux_mask8 == idx)[0])
+            aux_mask9 = numpy.where(auxcoords9 < 1.7)[0]
+            if aux_mask9.size > 0:
+                for y, idx in enumerate(aux_mask9):
+                    parent = parents[y]
+                    if pauxcoords9[parent] < 1.7:
+                        aux_mask9 = numpy.delete(aux_mask9, numpy.where(aux_mask9 == idx)[0])
+            aux_mask = numpy.concatenate((aux_mask1, 
+                                          aux_mask2,
+                                          aux_mask3,
+                                          aux_mask4,
+                                          aux_mask5,
+                                          aux_mask6,
+                                          aux_mask7,
+                                          aux_mask8,
+                                          aux_mask9))
+            print(aux_mask)
             diff = numpy.setdiff1d(nextwtgraph, nextparents)
             merged = []
             
@@ -71,7 +157,7 @@ def main():
             diff_where = []
     
             # Figure out which child resulted from the segment
-            for l in aux_mask[0]:
+            for l in aux_mask:
                 # The easiest case with no merging
                 if l in nextparents:
                     next_seg = numpy.where(nextparents==l)[0]
@@ -214,7 +300,8 @@ def main():
             
             if b == 1:
                 weights /= (weights.sum())
-                f[path]['seg_index']['weight',:] = weights
+                group = f[seg_index_path]
+                group['weight', ...] = weights
             else:
                 continue
             time2 = time.time()
