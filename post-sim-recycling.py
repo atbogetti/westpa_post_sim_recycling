@@ -8,7 +8,7 @@ import os
 import sys
 from tqdm import tqdm
 
-os.system("cp west_bak.h5 west.h5")
+#os.system("cp west_bak.h5 west.h5")
 h5file = 'west.h5'
 fi = 2
 li = 1500
@@ -70,10 +70,7 @@ def main():
             pauxcoords8 = f[prevpath]['auxdata/c23n34'][:,-1]
             auxcoords9 = f[path]['auxdata/c25n34'][:,-1]
             pauxcoords9 = f[prevpath]['auxdata/c25n34'][:,-1]
-            max_weight = weights.max()
-            w = numpy.where(weights == max_weight)[0][0]
-            next_parent_add = numpy.where(nextparents == w)[0][0]
-            
+
             # Find the walkers that entered the alternate product state.        
             aux_mask1 = numpy.where(auxcoords1 < 1.7)[0]
             if aux_mask1.size > 0:
@@ -138,7 +135,6 @@ def main():
                                           aux_mask7,
                                           aux_mask8,
                                           aux_mask9))
-            print(aux_mask)
             diff = numpy.setdiff1d(nextwtgraph, nextparents)
             merged = []
             
@@ -153,9 +149,46 @@ def main():
             
 
             merge_ids = []
+            merge_ids_add = []
             transaction_weights = []
+            transaction_weights_add = []
             diff_where = []
-    
+   
+            if aux_mask.shape[0] > 0:
+                bstates = numpy.where(numpy.logical_and(pcoords[:,0]>18, pcoords[:,0]<22))[0][0]
+                bstate_weights = weights[bstates]
+                max_weight = bstate_weights.max()
+                w = numpy.where(weights == max_weight)[0][0]
+#                next_parent_add = numpy.where(nextparents == w)[0][0]
+
+                if w in nextparents:
+                    next_seg = numpy.where(nextparents==w)[0]
+                    merge_ids_add.append(next_seg)
+                    transaction_weights_add.append(weights[w])
+                    if print_switch:
+                        print(i, w, "---", next_seg)
+                # The not so easy case where merging occurred
+                else:
+                    for num, m in enumerate(merged):
+                        if w in m:
+                            ndiff = numpy.setdiff1d(m,diff)
+                            if ndiff.shape[0] > 1: 
+                                if ndiff[0] in nextparents:
+                                    ndiff = ndiff[0]
+                                    continue
+                                else:
+                                    ndiff = ndiff[1]
+                            if ndiff.size == 0:
+                                next_seg = numpy.where(nextparents<0)[0]
+                            else:
+                                next_seg = numpy.where(nextparents==ndiff)[0]
+                            merge_ids_add.append(next_seg)
+                            transaction_weights_add.append(weights[w])
+                            if print_switch:
+                                print(i, w, ndiff, "-->", next_seg)
+                        else:
+                            continue
+
             # Figure out which child resulted from the segment
             for l in aux_mask:
                 # The easiest case with no merging
@@ -198,15 +231,23 @@ def main():
                     split_weight = transaction_weights[num]/num_split
                     for q in next_parent_subtract:
                         transaction_array1 = numpy.array([iteration_plus_one, q, -1, split_weight])
-                        transaction_array2 = numpy.array([iteration_plus_one, next_parent_add, 1, split_weight])
                         transactions.append(transaction_array1)
-                        transactions.append(transaction_array2)
-
-                # Or if no splitting occurred
                 else:
                     transaction_array1 = numpy.array([iteration_plus_one, next_parent_subtract[0], -1, transaction_weights[num]])
-                    transaction_array2 = numpy.array([iteration_plus_one, next_parent_add, 1, transaction_weights[num]])
                     transactions.append(transaction_array1)
+
+            for num, p in enumerate(merge_ids_add):
+                next_parent_add = p
+                # This is to account for splitting
+                if len(next_parent_add) > 1:
+                    num_split = len(next_parent_add)
+                    split_weight = transaction_weights_add[num]/num_split
+                    for q in next_parent_add:
+                        transaction_array2 = numpy.array([iteration_plus_one, q, 1, split_weight])
+                        transactions.append(transaction_array2)
+                # Or if no splitting occurred
+                else:
+                    transaction_array2 = numpy.array([iteration_plus_one, next_parent_add[0], 1, transaction_weights_add[num]])
                     transactions.append(transaction_array2)
                   
             # Now to do forward propagation.   
@@ -271,15 +312,11 @@ def main():
                     split_weight = transaction_weights[num]/num_split
                     for q in next_parent_subtract:
                         transaction_array1 = numpy.array([iteration_plus_one, q, -1, split_weight])
-                        transaction_array2 = numpy.array([iteration_plus_one, next_parent_add, 1, split_weight])
                         transactions.append(transaction_array1)
-                        transactions.append(transaction_array2)
 
                 else:
                     transaction_array1 = numpy.array([iteration_plus_one, next_parent_subtract[0], -1, transaction_weights[num]])
-                    transaction_array2 = numpy.array([iteration_plus_one, next_parent_add, 1, transaction_weights[num]])
                     transactions.append(transaction_array1)
-                    transactions.append(transaction_array2)
  
             b = 0      
             if not transactions:
