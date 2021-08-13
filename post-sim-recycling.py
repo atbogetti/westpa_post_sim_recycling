@@ -10,10 +10,10 @@ from tqdm import tqdm
 
 #os.system("cp west_bak.h5 west.h5")
 h5file = 'west.h5'
-fi = 2
-li = 1500
+fi = 105
+li = 125
 transactions = []
-print_switch = False
+print_switch = True
 
 #@profile
 def main():
@@ -75,57 +75,68 @@ def main():
             aux_mask1 = numpy.where(auxcoords1 < 1.7)[0]
             if aux_mask1.size > 0:
                 for y, idx in enumerate(aux_mask1):
-                    parent = parents[y]
+                    parent = parents[idx]
                     if pauxcoords1[parent] < 1.7:
                         aux_mask1 = numpy.delete(aux_mask1, numpy.where(aux_mask1 == idx)[0])
             aux_mask2 = numpy.where(auxcoords2 < 1.7)[0]
             if aux_mask2.size > 0:
                 for y, idx in enumerate(aux_mask2):
-                    parent = parents[y]
+                    parent = parents[idx]
                     if pauxcoords2[parent] < 1.7:
                         aux_mask2 = numpy.delete(aux_mask2, numpy.where(aux_mask2 == idx)[0])
             aux_mask3 = numpy.where(auxcoords3 < 1.7)[0]
             if aux_mask3.size > 0:
                 for y, idx in enumerate(aux_mask3):
-                    parent = parents[y]
+                    parent = parents[idx]
                     if pauxcoords3[parent] < 1.7:
                         aux_mask3 = numpy.delete(aux_mask3, numpy.where(aux_mask3 == idx)[0])
             aux_mask4 = numpy.where(auxcoords4 < 1.7)[0]
             if aux_mask4.size > 0:
                 for y, idx in enumerate(aux_mask4):
-                    parent = parents[y]
+                    parent = parents[idx]
                     if pauxcoords4[parent] < 1.7:
                         aux_mask4 = numpy.delete(aux_mask4, numpy.where(aux_mask4 == idx)[0])
             aux_mask5 = numpy.where(auxcoords5 < 1.7)[0]
             if aux_mask5.size > 0:
                 for y, idx in enumerate(aux_mask5):
-                    parent = parents[y]
+                    parent = parents[idx]
                     if pauxcoords5[parent] < 1.7:
                         aux_mask5 = numpy.delete(aux_mask5, numpy.where(aux_mask5 == idx)[0])
             aux_mask6 = numpy.where(auxcoords6 < 1.7)[0]
             if aux_mask6.size > 0:
                 for y, idx in enumerate(aux_mask6):
-                    parent = parents[y]
+                    parent = parents[idx]
                     if pauxcoords6[parent] < 1.7:
                         aux_mask6 = numpy.delete(aux_mask6, numpy.where(aux_mask6 == idx)[0])
             aux_mask7 = numpy.where(auxcoords7 < 1.7)[0]
             if aux_mask7.size > 0:
                 for y, idx in enumerate(aux_mask7):
-                    parent = parents[y]
+                    parent = parents[idx]
                     if pauxcoords7[parent] < 1.7:
                         aux_mask7 = numpy.delete(aux_mask7, numpy.where(aux_mask7 == idx)[0])
             aux_mask8 = numpy.where(auxcoords8 < 1.7)[0]
             if aux_mask8.size > 0:
                 for y, idx in enumerate(aux_mask8):
-                    parent = parents[y]
+                    parent = parents[idx]
                     if pauxcoords8[parent] < 1.7:
                         aux_mask8 = numpy.delete(aux_mask8, numpy.where(aux_mask8 == idx)[0])
             aux_mask9 = numpy.where(auxcoords9 < 1.7)[0]
             if aux_mask9.size > 0:
                 for y, idx in enumerate(aux_mask9):
-                    parent = parents[y]
+                    parent = parents[idx]
                     if pauxcoords9[parent] < 1.7:
                         aux_mask9 = numpy.delete(aux_mask9, numpy.where(aux_mask9 == idx)[0])
+
+            print(aux_mask1,
+                  aux_mask2,
+                  aux_mask3,
+                  aux_mask4,
+                  aux_mask5,
+                  aux_mask6,
+                  aux_mask7,
+                  aux_mask8,
+                  aux_mask9)
+
             aux_mask = numpy.concatenate((aux_mask1, 
                                           aux_mask2,
                                           aux_mask3,
@@ -135,6 +146,9 @@ def main():
                                           aux_mask7,
                                           aux_mask8,
                                           aux_mask9))
+
+            print(i, aux_mask, weights[aux_mask])
+
             diff = numpy.setdiff1d(nextwtgraph, nextparents)
             merged = []
             
@@ -191,15 +205,16 @@ def main():
 
             # Figure out which child resulted from the segment
             for l in aux_mask:
-                # The easiest case with no merging
-                if l in nextparents:
-                    next_seg = numpy.where(nextparents==l)[0]
-                    merge_ids.append(next_seg)
-                    transaction_weights.append(weights[l])
-                    if print_switch:
-                        print(i, l, "---", next_seg)
-                # The not so easy case where merging occurred
-                else:
+               # # The easiest case with no merging
+               # if l in nextparents:
+               #     next_seg = numpy.where(nextparents==l)[0]
+               #     merge_ids.append(next_seg)
+               #     transaction_weights.append(weights[l])
+               #     if print_switch:
+               #         print(i, l, "---", next_seg)
+               # # The not so easy case where merging occurred
+               # else:
+                if l not in nextparents:
                     for num, m in enumerate(merged):
                         if l in m:
                             ndiff = numpy.setdiff1d(m,diff)
@@ -311,11 +326,11 @@ def main():
                     num_split = len(next_parent_subtract)
                     split_weight = transaction_weights[num]/num_split
                     for q in next_parent_subtract:
-                        transaction_array1 = numpy.array([iteration_plus_one, q, -1, split_weight])
+                        transaction_array1 = numpy.array([iteration_plus_one, q, 1, split_weight])
                         transactions.append(transaction_array1)
 
                 else:
-                    transaction_array1 = numpy.array([iteration_plus_one, next_parent_subtract[0], -1, transaction_weights[num]])
+                    transaction_array1 = numpy.array([iteration_plus_one, next_parent_subtract[0], 1, transaction_weights[num]])
                     transactions.append(transaction_array1)
  
             b = 0      
@@ -327,17 +342,19 @@ def main():
  
             if i not in arr_i:
                 continue
-         
             # Modify the hdf5 file weights
             for r in arr_t[arr_i == i]:
                 segment = int(r[1])
+                print(i, segment, weights[segment], r[2], r[3])
                 new_weight = weights[segment] + r[2]*r[3]
                 weights[segment] = new_weight
                 b = 1
-            
             if b == 1:
                 weights /= (weights.sum())
                 group = f[seg_index_path]
+                if numpy.where(weights<0)[0].size > 0:
+                    print("Negatives!!")
+                    exit()
                 group['weight', ...] = weights
             else:
                 continue
