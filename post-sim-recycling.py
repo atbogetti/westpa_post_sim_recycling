@@ -10,10 +10,10 @@ from tqdm import tqdm
 
 #os.system("cp west_bak.h5 west.h5")
 h5file = 'west.h5'
-fi = 105
-li = 125
+fi = 2
+li = 1000
 transactions = []
-print_switch = True
+print_switch = False
 
 #@profile
 def main():
@@ -127,15 +127,15 @@ def main():
                     if pauxcoords9[parent] < 1.7:
                         aux_mask9 = numpy.delete(aux_mask9, numpy.where(aux_mask9 == idx)[0])
 
-            print(aux_mask1,
-                  aux_mask2,
-                  aux_mask3,
-                  aux_mask4,
-                  aux_mask5,
-                  aux_mask6,
-                  aux_mask7,
-                  aux_mask8,
-                  aux_mask9)
+#            print(aux_mask1,
+#                  aux_mask2,
+#                  aux_mask3,
+#                  aux_mask4,
+#                  aux_mask5,
+#                  aux_mask6,
+#                  aux_mask7,
+#                  aux_mask8,
+#                  aux_mask9)
 
             aux_mask = numpy.concatenate((aux_mask1, 
                                           aux_mask2,
@@ -147,7 +147,7 @@ def main():
                                           aux_mask8,
                                           aux_mask9))
 
-            print(i, aux_mask, weights[aux_mask])
+#            print(i, aux_mask, weights[aux_mask])
 
             diff = numpy.setdiff1d(nextwtgraph, nextparents)
             merged = []
@@ -345,7 +345,7 @@ def main():
             # Modify the hdf5 file weights
             for r in arr_t[arr_i == i]:
                 segment = int(r[1])
-                print(i, segment, weights[segment], r[2], r[3])
+#                print(i, segment, weights[segment], r[2], r[3])
                 new_weight = weights[segment] + r[2]*r[3]
                 weights[segment] = new_weight
                 b = 1
